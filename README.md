@@ -176,6 +176,10 @@ The server isn't reachable on its SQL port within 15 seconds. Check the host nam
 
 </details>
 
+## Try it without a server
+
+The repo includes a Docker-based SQL Server with a realistic simulated workload. See [demo/README.md](demo/README.md).
+
 ## Contributing
 
 Issues and pull requests are welcome! [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, the project layout, how to run the tests (no database needed), and the SQL Server gotchas to know before changing a query.

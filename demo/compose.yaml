@@ -1,0 +1,38 @@
+# A disposable SQL Server with a demo workload, for trying mssqltop and taking screenshots.
+# See demo/README.md. Start with `npm run demo:up`.
+name: mssqltop-demo
+
+x-password: &password ${MSSQLTOP_DEMO_PASSWORD:-Demo!Passw0rd}
+
+services:
+  sqlserver:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    # SQL Server has no ARM image; Docker Desktop runs this under Rosetta on Apple Silicon.
+    platform: linux/amd64
+    hostname: SQLDEMO01
+    environment:
+      ACCEPT_EULA: 'Y'
+      MSSQL_PID: Developer
+      MSSQL_SA_PASSWORD: *password
+      MSSQL_MEMORY_LIMIT_MB: '2048'
+    ports:
+      # Localhost only: this is a throwaway server with a well-known password.
+      - '127.0.0.1:${MSSQLTOP_DEMO_PORT:-14330}:1433'
+    volumes:
+      - sqldata:/var/opt/mssql
+      - ./:/demo:ro
+    entrypoint: ['/bin/bash', '/demo/entrypoint.sh']
+    healthcheck:
+      # Healthy once seeding has finished, so `docker compose up --wait` returns when the data is ready.
+      test:
+        [
+          'CMD-SHELL',
+          '/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$$MSSQL_SA_PASSWORD" -b -h -1 -Q "SET NOCOUNT ON; IF OBJECT_ID(''ShopDemo.dbo.SeedInfo'') IS NULL THROW 50000, ''seeding'', 1" -o /dev/null',
+        ]
+      interval: 5s
+      timeout: 10s
+      retries: 120
+      start_period: 30s
+
+volumes:
+  sqldata:

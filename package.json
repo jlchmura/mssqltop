@@ -38,7 +38,12 @@
 		"test:coverage": "vitest run --coverage",
 		"format": "prettier --write .",
 		"format:check": "prettier --check .",
-		"check": "npm run typecheck && npm run format:check && npm test"
+		"check": "npm run typecheck && npm run format:check && npm test",
+		"demo:up": "docker compose -f demo/compose.yaml up -d --wait",
+		"demo:load": "node demo/load.mjs",
+		"demo:top": "node demo/top.mjs",
+		"demo:down": "docker compose -f demo/compose.yaml down",
+		"prebuild": "node -e \"require('fs').rmSync('dist', {recursive: true, force: true})\""
 	},
 	"engines": {
 		"node": ">=22"

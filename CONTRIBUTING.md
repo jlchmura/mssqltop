@@ -21,6 +21,10 @@ npm run check        # typecheck + format check + tests
 npm run format       # fix formatting
 ```
 
+## A server to test against
+
+[`demo/`](demo/README.md) has a Docker-based SQL Server 2022 Developer Edition with a realistic workload: blocking, parallel queries and I/O. `npm run demo:up`, `npm run demo:load`, then `npm run demo:top`.
+
 ## Project layout
 
 ```
