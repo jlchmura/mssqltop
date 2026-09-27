@@ -40,19 +40,32 @@ SET ANSI_NULLS ON;
 `;
 
 const HIGH_BYTES = /[\x80-\xff]/;
+const BEYOND_BYTES = /[^\x00-\xff]/;
 const SQL_BIT = -7;
+const strictUtf8 = new TextDecoder('utf-8', {fatal: true});
 
 /**
- * The odbc binding hands back the driver's UTF-8 output one byte per UTF-16 unit, so non-ASCII
- * text arrives as mojibake ("hÃ©llo"). Re-reading those units as bytes recovers it exactly.
- * BIGINTs arrive as BigInt and BITs as '0'/'1'; normalize both to numbers.
+ * On macOS/Linux the odbc binding (built without UNICODE) hands back the driver's UTF-8 output
+ * one byte per UTF-16 unit, so non-ASCII text arrives as mojibake ("hÃ©llo"). Re-reading those
+ * units as bytes recovers it exactly. The Windows build uses wide strings and is already correct,
+ * so only repair strings that look like mojibake: every unit fits in a byte and the bytes are valid UTF-8.
  */
+export function fixMojibake(s: string): string {
+	if (!HIGH_BYTES.test(s) || BEYOND_BYTES.test(s)) return s;
+	try {
+		return strictUtf8.decode(Buffer.from(s, 'latin1'));
+	} catch {
+		return s;
+	}
+}
+
+/** Also normalizes BIGINTs (BigInt) and BITs ('0'/'1') to numbers. */
 function normalize(row: Row, bitColumns: Set<string>): Row {
 	for (const k in row) {
 		const v = row[k];
 		if (typeof v === 'string') {
 			if (bitColumns.has(k)) row[k] = v === '1' ? 1 : 0;
-			else if (HIGH_BYTES.test(v)) row[k] = Buffer.from(v, 'latin1').toString('utf8');
+			else row[k] = fixMojibake(v);
 		} else if (typeof v === 'bigint') {
 			row[k] = Number(v);
 		}

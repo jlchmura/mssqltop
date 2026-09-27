@@ -8,6 +8,7 @@
 [![npm downloads](https://img.shields.io/npm/dm/mssqltop.svg)](https://www.npmjs.com/package/mssqltop)
 [![node](https://img.shields.io/node/v/mssqltop.svg)](https://nodejs.org)
 [![license](https://img.shields.io/npm/l/mssqltop.svg)](LICENSE)
+[![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jlchmura)
 
 <img src="docs/screenshot.png" alt="mssqltop monitoring a SQL Server instance" width="900">
 
@@ -118,7 +119,7 @@ Refresh:
   ```
 
 - **SQL Server version:** tested against SQL Server 2016. It should work on 2012 and later, since it only uses DMVs available there.
-- **Client OS:** developed and tested on macOS. Linux and Windows use the same ODBC driver and should work; reports are welcome.
+- **Client OS:** developed and tested on macOS. Linux and Windows use the same ODBC driver and should work; reports are welcome. Prebuilt binaries for the `odbc` dependency cover macOS (arm64/x64), Linux x64, and Windows x64; other platforms (e.g. Linux or Windows on ARM64) compile it on install, which needs a C++ toolchain and, on Linux, the unixODBC headers (`unixodbc-dev`).
 - **Terminal:** any modern terminal with Unicode and 256 colors. The charts need a font that includes braille characters, which the default fonts on macOS, Windows Terminal, and most Linux distros do.
 
 ## How it works
@@ -186,6 +187,12 @@ The code is in `src/`: `queries.ts` has the T-SQL, `monitor.ts` does polling and
 ## Contributing
 
 Issues and pull requests are welcome. If you're adding a panel or column, please note which SQL Server versions its DMVs require.
+
+## Support
+
+If mssqltop saves you a trip to SSMS, you could buy me a coffee ☕
+
+<a href="https://www.buymeacoffee.com/jlchmura"><img src="https://cdn.buymeacoffee.com/buttons/v2/default-yellow.png" alt="Buy Me A Coffee" height="60"></a>
 
 ## License
 

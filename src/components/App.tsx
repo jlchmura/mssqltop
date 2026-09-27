@@ -52,7 +52,10 @@ const matches = (needle: string, ...hay: Array<string | number | null>) =>
 
 export function App({monitor, target}: {monitor: Monitor; target: string}) {
 	const state = useSyncExternalStore(monitor.subscribe, monitor.getState);
-	const {columns: width, rows: height} = useWindowSize();
+	const {columns: width, rows} = useWindowSize();
+	// Ink clears the whole Windows console on every frame that fills the screen, which flickers;
+	// staying one row short keeps it on the incremental-update path.
+	const height = process.platform === 'win32' ? rows - 1 : rows;
 	const {exit} = useApp();
 
 	const [focus, setFocus] = useState<'processes' | 'queries'>('processes');
