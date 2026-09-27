@@ -37,13 +37,13 @@ mssqltop -S my-sql-server
 
 mssqltop talks to SQL Server through the official Microsoft ODBC driver, so install that first:
 
-| Platform | ODBC driver |
-| --- | --- |
-| macOS | `brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release && brew install msodbcsql18` |
-| Linux | [Install ODBC Driver 18 for SQL Server on Linux](https://learn.microsoft.com/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server) |
-| Windows | [Download ODBC Driver 18 for SQL Server](https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server) |
+| Platform | ODBC driver                                                                                                                                                  |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| macOS    | `brew tap microsoft/mssql-release https://github.com/Microsoft/homebrew-mssql-release && brew install msodbcsql18`                                           |
+| Linux    | [Install ODBC Driver 18 for SQL Server on Linux](https://learn.microsoft.com/sql/connect/odbc/linux-mac/installing-the-microsoft-odbc-driver-for-sql-server) |
+| Windows  | [Download ODBC Driver 18 for SQL Server](https://learn.microsoft.com/sql/connect/odbc/download-odbc-driver-for-sql-server)                                   |
 
-Then install mssqltop globally. It needs Node.js 20 or newer.
+Then install mssqltop globally. It needs Node.js 22 or newer.
 
 ```bash
 npm install -g mssqltop
@@ -83,32 +83,35 @@ Refresh:
   -i, --interval <seconds>     Overview/process refresh interval (default: 2)
       --recent-interval <s>    Recent expensive queries poll interval (default: 10)
       --recent-window <s>      Window the recent expensive query rates cover (default: 60)
+
+  -h, --help                   Show help
+  -v, --version                Show the version
 ```
 
 </details>
 
 ### Keyboard shortcuts
 
-| Key | Action |
-| --- | --- |
-| `Tab` | Switch between the Processes and Expensive Queries panels |
-| `↑` `↓` `PgUp` `PgDn` `Home` `End` (or `j` `k`) | Move the selection |
-| `Enter` | Details and full SQL text for the selected row |
-| `e` or `←` `→` | Toggle Recent / Active Expensive Queries |
-| `/` | Filter the focused panel by text (`Enter` keeps it, `Esc` clears it) |
-| `<` `>` | Change the sort column |
-| `i` | Invert the sort order |
-| `t` | Processes: only rows with a Task State |
-| `u` | Processes: only user processes |
-| `b` | Processes: only blocked sessions and head blockers |
-| `g` | Processes: one row per session, or one row per task (SSMS style) |
-| `m` | Maximize the focused panel |
-| `c` | Show or hide the charts |
-| `p` | Pause or resume refreshing |
-| `r` | Refresh now |
-| `+` `-` | Lengthen or shorten the refresh interval |
-| `?` | Help |
-| `q` | Quit |
+| Key                                             | Action                                                               |
+| ----------------------------------------------- | -------------------------------------------------------------------- |
+| `Tab`                                           | Switch between the Processes and Expensive Queries panels            |
+| `↑` `↓` `PgUp` `PgDn` `Home` `End` (or `j` `k`) | Move the selection                                                   |
+| `Enter`                                         | Details and full SQL text for the selected row                       |
+| `e` or `←` `→`                                  | Toggle Recent / Active Expensive Queries                             |
+| `/`                                             | Filter the focused panel by text (`Enter` keeps it, `Esc` clears it) |
+| `<` `>`                                         | Change the sort column                                               |
+| `i`                                             | Invert the sort order                                                |
+| `t`                                             | Processes: only rows with a Task State                               |
+| `u`                                             | Processes: only user processes                                       |
+| `b`                                             | Processes: only blocked sessions and head blockers                   |
+| `g`                                             | Processes: one row per session, or one row per task (SSMS style)     |
+| `m`                                             | Maximize the focused panel                                           |
+| `c`                                             | Show or hide the charts                                              |
+| `p`                                             | Pause or resume refreshing                                           |
+| `r`                                             | Refresh now                                                          |
+| `+` `-`                                         | Lengthen or shorten the refresh interval                             |
+| `?`                                             | Help                                                                 |
+| `q`                                             | Quit                                                                 |
 
 ## Requirements
 
@@ -126,15 +129,15 @@ Refresh:
 
 Each panel is computed from SQL Server's dynamic management views. Cumulative counters are sampled on each refresh and turned into rates.
 
-| Metric | Source |
-| --- | --- |
-| % Processor Time | Δ(kernel + user time across `sys.dm_os_threads`) ÷ (elapsed × CPU count). This is SQL Server's own CPU, not the whole machine's |
-| Waiting Tasks | Rows in `sys.dm_os_waiting_tasks` that belong to user sessions |
-| Database I/O | Δ(bytes read + written) across `sys.dm_io_virtual_file_stats` |
-| Batch Requests/sec | Δ of the `Batch Requests/sec` performance counter |
-| Processes | `sys.dm_exec_sessions` ⟕ `requests` ⟕ `dm_os_tasks` ⟕ `dm_os_waiting_tasks`, like SSMS |
-| Recent Expensive Queries | Δ of `sys.dm_exec_query_stats` totals per `query_hash`, summed over a rolling 60s window |
-| Active Expensive Queries | `sys.dm_exec_requests` ⟕ `sys.dm_exec_query_memory_grants` |
+| Metric                   | Source                                                                                                                          |
+| ------------------------ | ------------------------------------------------------------------------------------------------------------------------------- |
+| % Processor Time         | Δ(kernel + user time across `sys.dm_os_threads`) ÷ (elapsed × CPU count). This is SQL Server's own CPU, not the whole machine's |
+| Waiting Tasks            | Rows in `sys.dm_os_waiting_tasks` that belong to user sessions                                                                  |
+| Database I/O             | Δ(bytes read + written) across `sys.dm_io_virtual_file_stats`                                                                   |
+| Batch Requests/sec       | Δ of the `Batch Requests/sec` performance counter                                                                               |
+| Processes                | `sys.dm_exec_sessions` ⟕ `requests` ⟕ `dm_os_tasks` ⟕ `dm_os_waiting_tasks`, like SSMS                                          |
+| Recent Expensive Queries | Δ of `sys.dm_exec_query_stats` totals per `query_hash`, summed over a rolling 60s window                                        |
+| Active Expensive Queries | `sys.dm_exec_requests` ⟕ `sys.dm_exec_query_memory_grants`                                                                      |
 
 mssqltop opens two connections: one for the fast refresh, and one for the heavier plan-cache scan so it never stalls the charts. Its own sessions and statements are hidden from the lists.
 
@@ -173,20 +176,9 @@ The server isn't reachable on its SQL port within 15 seconds. Check the host nam
 
 </details>
 
-## Development
-
-```bash
-git clone <this repo> && cd mssqltop
-npm install
-npm run build        # or: npm run dev  (tsc --watch)
-node dist/cli.js -S my-sql-server
-```
-
-The code is in `src/`: `queries.ts` has the T-SQL, `monitor.ts` does polling and delta math, and `components/` holds the [Ink](https://github.com/vadimdemedes/ink) UI.
-
 ## Contributing
 
-Issues and pull requests are welcome. If you're adding a panel or column, please note which SQL Server versions its DMVs require.
+Issues and pull requests are welcome! [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, the project layout, how to run the tests (no database needed), and the SQL Server gotchas to know before changing a query.
 
 ## Support
 

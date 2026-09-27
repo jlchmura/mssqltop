@@ -1,51 +1,61 @@
 {
-  "name": "mssqltop",
-  "version": "0.1.0",
-  "description": "htop-style terminal activity monitor for Microsoft SQL Server, modeled after the SSMS Activity Monitor",
-  "keywords": [
-    "mssql",
-    "sql-server",
-    "sqlserver",
-    "top",
-    "htop",
-    "activity-monitor",
-    "monitoring",
-    "dba",
-    "cli",
-    "tui",
-    "ink"
-  ],
-  "license": "MIT",
-  "author": "John Chmura",
-  "type": "module",
-  "bin": {
-    "mssqltop": "dist/cli.js"
-  },
-  "files": [
-    "dist/**/*.js",
-    "README.md",
-    "LICENSE"
-  ],
-  "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch",
-    "start": "node dist/cli.js",
-    "prepare": "tsc",
-    "prepublishOnly": "npm run build"
-  },
-  "engines": {
-    "node": ">=20"
-  },
-  "dependencies": {
-    "ink": "^7.1.1",
-    "odbc": "^2.6.0",
-    "react": "^19.3.0",
-    "string-width": "^8.1.0"
-  },
-  "devDependencies": {
-    "@types/node": "^26.6.3",
-    "@types/react": "^19.3.0",
-    "typescript": "^7.0.2"
-  },
-  "funding": "https://www.buymeacoffee.com/jlchmura"
+	"name": "mssqltop",
+	"version": "0.1.0",
+	"description": "htop-style terminal activity monitor for Microsoft SQL Server, modeled after the SSMS Activity Monitor",
+	"keywords": [
+		"mssql",
+		"sql-server",
+		"sqlserver",
+		"top",
+		"htop",
+		"activity-monitor",
+		"monitoring",
+		"dba",
+		"cli",
+		"tui",
+		"ink"
+	],
+	"license": "MIT",
+	"author": "John Chmura",
+	"type": "module",
+	"bin": {
+		"mssqltop": "dist/cli.js"
+	},
+	"files": [
+		"dist/**/*.js",
+		"README.md",
+		"LICENSE"
+	],
+	"scripts": {
+		"build": "tsc -p tsconfig.build.json",
+		"dev": "tsc -p tsconfig.build.json --watch",
+		"start": "node dist/cli.js",
+		"prepare": "npm run build",
+		"prepublishOnly": "npm run check",
+		"typecheck": "tsc -p tsconfig.json",
+		"test": "vitest run",
+		"test:watch": "vitest",
+		"test:coverage": "vitest run --coverage",
+		"format": "prettier --write .",
+		"format:check": "prettier --check .",
+		"check": "npm run typecheck && npm run format:check && npm test"
+	},
+	"engines": {
+		"node": ">=22"
+	},
+	"dependencies": {
+		"ink": "^7.1.1",
+		"odbc": "^2.6.0",
+		"react": "^19.3.0",
+		"string-width": "^8.1.0"
+	},
+	"devDependencies": {
+		"@types/node": "^26.6.3",
+		"@types/react": "^19.3.0",
+		"@vitest/coverage-v8": "^5.0.2",
+		"prettier": "^3.9.9",
+		"typescript": "^7.0.2",
+		"vitest": "^5.0.2"
+	},
+	"funding": "https://www.buymeacoffee.com/jlchmura"
 }

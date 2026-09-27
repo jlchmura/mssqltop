@@ -1,4 +1,9 @@
-// T-SQL used by the monitor. Modeled on the queries SSMS Activity Monitor issues.
+/**
+ * All T-SQL the monitor runs, modeled on the queries SSMS Activity Monitor issues.
+ *
+ * Column names here are a contract with the row mappers in src/monitor/rows.ts.
+ * Each export is a single statement, because the ODBC binding only returns the first result set.
+ */
 
 /** Embedded in every statement we run so our own work can be left out of the query lists. */
 export const MARKER = '/*mssqltop*/';
@@ -122,6 +127,9 @@ WHERE s.is_user_process = 1 AND r.session_id <> @@SPID AND r.sql_handle IS NOT N
 
 const DATETIME_LITERAL = /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}(\.\d{1,3})?$/;
 
+/** The server's clock less some slack, used as the next {@link recentQueries} `since`. */
+export const NEXT_SINCE = `SELECT ${MARKER} CONVERT(varchar(23), DATEADD(second, -2, GETDATE()), 121) AS next_since;`;
+
 /**
  * Cumulative dm_exec_query_stats totals aggregated by query_hash. Only queries that
  * finished an execution at/after `since` (a server-local datetime string) are returned,
@@ -169,7 +177,9 @@ SELECT
 	a.executions, a.worker_us, a.physical_reads, a.logical_writes, a.logical_reads, a.elapsed_us, a.plan_count
 	${includeDetail ? ', d.database_name, t.statement_text' : ''}
 FROM agg a
-${includeDetail ? `
+${
+	includeDetail
+		? `
 OUTER APPLY (
 	SELECT ${STATEMENT_TEXT('st.text', 'a.stmt_start', 'a.stmt_end')} AS statement_text
 	FROM sys.dm_exec_sql_text(a.sql_handle) st
@@ -177,14 +187,19 @@ OUTER APPLY (
 OUTER APPLY (
 	SELECT DB_NAME(CONVERT(int, pa.value)) AS database_name
 	FROM sys.dm_exec_plan_attributes(a.plan_handle) pa WHERE pa.attribute = 'dbid'
-) d` : ''};
+) d`
+		: ''
+};
 `;
 }
 
-export const NEXT_SINCE = `SELECT ${MARKER} CONVERT(varchar(23), DATEADD(second, -2, GETDATE()), 121) AS next_since;`;
-
+/**
+ * The SQL text behind one session: its current statement, most recent batch and (when supported)
+ * input buffer. sys.dm_exec_input_buffer needs SQL Server 2014 SP2 / 2016 SP1 or later.
+ */
 export function sessionDetail(sessionId: number, withInputBuffer: boolean): string {
-	const id = Math.trunc(Number(sessionId));
+	if (!Number.isInteger(sessionId) || sessionId <= 0) throw new Error(`Bad session id: ${sessionId}`);
+	const id = sessionId;
 	return `
 SELECT ${MARKER}
 	(SELECT TOP 1 ${STATEMENT_TEXT('st.text', 'r.statement_start_offset', 'r.statement_end_offset')}
