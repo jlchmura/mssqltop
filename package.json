@@ -1,6 +1,6 @@
 {
 	"name": "mssqltop",
-	"version": "0.1.1",
+	"version": "0.1.2",
 	"description": "htop-style terminal activity monitor for Microsoft SQL Server, modeled after the SSMS Activity Monitor",
 	"keywords": [
 		"mssql",
