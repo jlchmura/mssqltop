@@ -29,7 +29,8 @@ npm run format       # fix formatting
 
 ```
 src/
-  cli.tsx               Entry point: parse args, open connections, render the app
+  cli.ts                Executable entry point: selects React's production build, then loads main
+  main.tsx              Parse args, open connections, render the app
   args.ts               Command-line parsing (pure)
   db/
     connection-string.ts  ODBC connection-string building and escaping

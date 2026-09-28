@@ -1,4 +1,3 @@
-#!/usr/bin/env node
 import {createRequire} from 'node:module';
 import {render} from 'ink';
 import {USAGE, parseCli} from './args.js';

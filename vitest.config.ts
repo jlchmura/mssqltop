@@ -7,7 +7,7 @@ export default defineConfig({
 		env: {FORCE_COLOR: '0'},
 		coverage: {
 			include: ['src/**/*.{ts,tsx}'],
-			exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/cli.tsx'],
+			exclude: ['src/**/*.test.{ts,tsx}', 'src/test/**', 'src/cli.ts', 'src/main.tsx'],
 		},
 	},
 });
