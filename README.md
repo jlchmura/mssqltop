@@ -7,10 +7,10 @@
 [![npm version](https://img.shields.io/npm/v/mssqltop.svg)](https://www.npmjs.com/package/mssqltop)
 [![npm downloads](https://img.shields.io/npm/dm/mssqltop.svg)](https://www.npmjs.com/package/mssqltop)
 [![node](https://img.shields.io/node/v/mssqltop.svg)](https://nodejs.org)
-[![license](https://img.shields.io/npm/l/mssqltop.svg)](LICENSE)
+[![license](https://img.shields.io/npm/l/mssqltop.svg)](https://github.com/jlchmura/mssqltop/blob/main/LICENSE)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jlchmura)
 
-<img src="docs/mssqltop-screenshot.png" alt="mssqltop monitoring a SQL Server instance" width="900">
+<img src="https://raw.githubusercontent.com/jlchmura/mssqltop/main/docs/mssqltop-screenshot.png" alt="mssqltop monitoring a SQL Server instance" width="900">
 
 </div>
 
@@ -208,11 +208,11 @@ The server isn't reachable on its SQL port within 15 seconds. Check the host nam
 
 ## Try it without a server
 
-The repo includes a Docker-based SQL Server with a realistic simulated workload. See [demo/README.md](demo/README.md).
+The repo includes a Docker-based SQL Server with a realistic simulated workload. See [demo/README.md](https://github.com/jlchmura/mssqltop/blob/main/demo/README.md).
 
 ## Contributing
 
-Issues and pull requests are welcome! [CONTRIBUTING.md](CONTRIBUTING.md) covers setup, the project layout, how to run the tests (no database needed), and the SQL Server gotchas to know before changing a query.
+Issues and pull requests are welcome! [CONTRIBUTING.md](https://github.com/jlchmura/mssqltop/blob/main/CONTRIBUTING.md) covers setup, the project layout, how to run the tests (no database needed), and the SQL Server gotchas to know before changing a query.
 
 ## Support
 
@@ -222,6 +222,6 @@ If mssqltop saves you a trip to SSMS, you could buy me a coffee ☕
 
 ## License
 
-[MIT](LICENSE) © John Chmura
+[MIT](https://github.com/jlchmura/mssqltop/blob/main/LICENSE) © John Chmura
 
 <sub>Not affiliated with or endorsed by Microsoft. SQL Server and SQL Server Management Studio are trademarks of Microsoft Corporation.</sub>

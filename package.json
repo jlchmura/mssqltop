@@ -18,6 +18,14 @@
 	"license": "MIT",
 	"author": "John Chmura",
 	"type": "module",
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/jlchmura/mssqltop.git"
+	},
+	"homepage": "https://github.com/jlchmura/mssqltop#readme",
+	"bugs": {
+		"url": "https://github.com/jlchmura/mssqltop/issues"
+	},
 	"bin": {
 		"mssqltop": "dist/cli.js"
 	},
