@@ -7,13 +7,16 @@ import {
 	OVERVIEW,
 	PROCESSES,
 	SERVER_INFO,
+	activePlan,
+	livePlan,
+	recentPlan,
 	recentQueries,
 	sessionDetail,
 } from '../sql/queries.js';
 import {RecentQueryTracker} from './recent.js';
 import {RateTracker, activeKey, num, str, toActiveRow, toProcessRow, toServerInfo} from './rows.js';
 import {appendSample, emptySeries, readCounters, sampleBetween, type Counters} from './series.js';
-import type {MonitorState, SessionDetail} from './types.js';
+import type {FetchedPlan, MonitorState, PlanTarget, SessionDetail} from './types.js';
 
 export interface MonitorOptions {
 	/** Refresh interval for the charts, processes and active queries. */
@@ -144,6 +147,26 @@ export class Monitor {
 			lastBatch: text(row?.last_batch),
 			inputBuffer: text(row?.input_buffer),
 		};
+	}
+
+	/** The plan behind an active request (live if the server can provide it) or a recent query; null if none is cached. */
+	async fetchPlan(target: PlanTarget): Promise<FetchedPlan | null> {
+		const planOf = async (sql: string) => {
+			const [row] = await this.db.query(sql);
+			return row?.query_plan == null || row.query_plan === '' ? null : String(row.query_plan);
+		};
+		if (target.kind === 'recent') {
+			const xml = await planOf(recentPlan(target.key));
+			return xml ? {source: 'estimated', xml} : null;
+		}
+		try {
+			const xml = await planOf(livePlan(target.sessionId, target.requestId));
+			if (xml) return {source: 'live', xml};
+		} catch {
+			// sys.dm_exec_query_statistics_xml needs SQL Server 2016 SP1 or later; fall back to the cached plan.
+		}
+		const xml = await planOf(activePlan(target.sessionId, target.requestId));
+		return xml ? {source: 'estimated', xml} : null;
 	}
 
 	// ---- polling -----------------------------------------------------------------------------------

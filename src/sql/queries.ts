@@ -193,6 +193,59 @@ OUTER APPLY (
 `;
 }
 
+const checkIds = (sessionId: number, requestId: number) => {
+	if (!Number.isInteger(sessionId) || sessionId <= 0) throw new Error(`Bad session id: ${sessionId}`);
+	if (!Number.isInteger(requestId) || requestId < 0) throw new Error(`Bad request id: ${requestId}`);
+};
+
+/**
+ * A running request's plan with the actual row counts so far. Needs SQL Server 2016 SP1 or later
+ * with lightweight query profiling (on by default from 2019; trace flag 7412 before that); returns
+ * no rows otherwise.
+ */
+export function livePlan(sessionId: number, requestId: number): string {
+	checkIds(sessionId, requestId);
+	return `
+SELECT ${MARKER} CONVERT(nvarchar(max), x.query_plan) AS query_plan
+FROM sys.dm_exec_query_statistics_xml(${sessionId}) x
+WHERE x.request_id = ${requestId};
+`;
+}
+
+/** The cached (estimated) plan of the statement a request is running. */
+export function activePlan(sessionId: number, requestId: number): string {
+	checkIds(sessionId, requestId);
+	return `
+SELECT ${MARKER} p.query_plan
+FROM sys.dm_exec_requests r
+CROSS APPLY sys.dm_exec_text_query_plan(r.plan_handle, r.statement_start_offset, r.statement_end_offset) p
+WHERE r.session_id = ${sessionId} AND r.request_id = ${requestId};
+`;
+}
+
+const QUERY_HASH_KEY = /^0x[0-9A-F]{16}$/i;
+const HANDLE_KEY = /^(0x[0-9A-F]{2,128}):(\d{1,10})$/i;
+
+/** The cached plan most recently used by a Recent Expensive Queries row (keyed as in {@link recentQueries}). */
+export function recentPlan(key: string): string {
+	const handle = HANDLE_KEY.exec(key);
+	let where: string;
+	if (QUERY_HASH_KEY.test(key)) where = `query_hash = ${key}`;
+	else if (handle) where = `sql_handle = ${handle[1]} AND statement_start_offset = ${handle[2]}`;
+	else throw new Error(`Bad query key: ${key}`);
+	return `
+WITH qs AS (
+	SELECT TOP 1 plan_handle, statement_start_offset, statement_end_offset
+	FROM sys.dm_exec_query_stats
+	WHERE ${where}
+	ORDER BY last_execution_time DESC
+)
+SELECT ${MARKER} p.query_plan
+FROM qs
+CROSS APPLY sys.dm_exec_text_query_plan(qs.plan_handle, qs.statement_start_offset, qs.statement_end_offset) p;
+`;
+}
+
 /**
  * The SQL text behind one session: its current statement, most recent batch and (when supported)
  * input buffer. sys.dm_exec_input_buffer needs SQL Server 2014 SP2 / 2016 SP1 or later.

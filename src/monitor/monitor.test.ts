@@ -28,6 +28,7 @@ interface Scenario {
 	recentBaseline?: Row[];
 	recentUpdate?: Row[];
 	detail?: (sql: string) => Row[];
+	plan?: (sql: string) => Row[];
 	fail?: (sql: string) => Error | undefined;
 }
 
@@ -64,6 +65,7 @@ function setup(scenario: Scenario = {}, options: Partial<MonitorOptions> = {}) {
 		if (sql === PROCESSES) return scenario.processes ?? [];
 		if (sql === ACTIVE_QUERIES) return scenario.active ?? [];
 		if (sql === NEXT_SINCE) return [{next_since: '2026-01-01 00:00:00.000'}];
+		if (sql.includes('query_plan')) return scenario.plan?.(sql) ?? [];
 		if (sql.includes('dm_exec_query_stats'))
 			return sql.includes('HAVING') ? (scenario.recentUpdate ?? []) : (scenario.recentBaseline ?? []);
 		if (sql.includes('current_statement')) return scenario.detail?.(sql) ?? [];
@@ -190,6 +192,41 @@ describe('Monitor', () => {
 			inputBuffer: null,
 		});
 		expect(db.queries.filter(q => q.includes('current_statement'))).toHaveLength(2);
+	});
+
+	it('fetches a live plan for an active request when the server has one', async () => {
+		const {monitor} = setup({
+			plan: sql => (sql.includes('statistics_xml') ? [{query_plan: '<live/>'}] : [{query_plan: '<cached/>'}]),
+		});
+		await expect(monitor.fetchPlan({kind: 'active', sessionId: 55, requestId: 0})).resolves.toEqual({
+			source: 'live',
+			xml: '<live/>',
+		});
+	});
+
+	it('falls back to the cached plan when there is no live one, or the server is too old for it', async () => {
+		const cached = (sql: string) => (sql.includes('statistics_xml') ? [] : [{query_plan: '<cached/>'}]);
+		const target = {kind: 'active', sessionId: 55, requestId: 0} as const;
+		await expect(setup({plan: cached}).monitor.fetchPlan(target)).resolves.toEqual({
+			source: 'estimated',
+			xml: '<cached/>',
+		});
+		const tooOld = setup({
+			plan: cached,
+			fail: sql => (sql.includes('statistics_xml') ? new Error('Invalid object name') : undefined),
+		});
+		await expect(tooOld.monitor.fetchPlan(target)).resolves.toMatchObject({source: 'estimated'});
+		await expect(setup({plan: () => [{query_plan: null}]}).monitor.fetchPlan(target)).resolves.toBeNull();
+	});
+
+	it('fetches the cached plan of a recent query', async () => {
+		const {monitor, db} = setup({plan: () => [{query_plan: '<cached/>'}]});
+		await expect(monitor.fetchPlan({kind: 'recent', key: '0x1234567890ABCDEF'})).resolves.toEqual({
+			source: 'estimated',
+			xml: '<cached/>',
+		});
+		expect(db.queries.at(-1)).toContain('query_hash = 0x1234567890ABCDEF');
+		await expect(setup().monitor.fetchPlan({kind: 'recent', key: '0x1234567890ABCDEF'})).resolves.toBeNull();
 	});
 
 	it('pauses and resumes, refreshing immediately on resume', async () => {

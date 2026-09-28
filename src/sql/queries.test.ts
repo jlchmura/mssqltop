@@ -6,6 +6,9 @@ import {
 	OVERVIEW,
 	PROCESSES,
 	SERVER_INFO,
+	activePlan,
+	livePlan,
+	recentPlan,
 	recentQueries,
 	sessionDetail,
 } from './queries.js';
@@ -45,6 +48,29 @@ describe('sessionDetail', () => {
 	});
 });
 
+describe('plan queries', () => {
+	it('fetch a request’s live and cached plans', () => {
+		expect(livePlan(52, 0)).toContain('dm_exec_query_statistics_xml(52)');
+		expect(livePlan(52, 0)).toContain('request_id = 0');
+		expect(activePlan(52, 3)).toContain('r.session_id = 52 AND r.request_id = 3');
+	});
+
+	it('look up a recent query’s plan by query hash or by statement handle', () => {
+		expect(recentPlan('0x1234567890ABCDEF')).toContain('WHERE query_hash = 0x1234567890ABCDEF');
+		expect(recentPlan('0x0200ABCD:120')).toContain('sql_handle = 0x0200ABCD AND statement_start_offset = 120');
+	});
+
+	it.each(["0x1'; DROP TABLE x --", '0x12', 'abc:1', '0x0200:-1', ''])('rejects the key %j', key => {
+		expect(() => recentPlan(key)).toThrow(/Bad query key/);
+	});
+
+	it('rejects bad ids', () => {
+		expect(() => livePlan(0, 0)).toThrow(/Bad session id/);
+		expect(() => activePlan(1, -1)).toThrow(/Bad request id/);
+		expect(() => activePlan(1, 1.5)).toThrow(/Bad request id/);
+	});
+});
+
 describe('every statement', () => {
 	const statements = {
 		SERVER_INFO,
@@ -55,6 +81,9 @@ describe('every statement', () => {
 		recentBaseline: recentQueries(null),
 		recent: recentQueries(SINCE),
 		sessionDetail: sessionDetail(52, true),
+		livePlan: livePlan(52, 0),
+		activePlan: activePlan(52, 0),
+		recentPlan: recentPlan('0x1234567890ABCDEF'),
 	};
 
 	it.each(Object.entries(statements))('%s carries the marker so the monitor can hide its own queries', (_, sql) => {

@@ -45,6 +45,9 @@ src/
     series.ts           Overview counters → chart samples
     recent.ts           Plan-cache snapshots → Recent Expensive Queries rates
     group.ts            Fold parallel tasks into one row per session
+  plan/
+    xml.ts              Minimal XML reader (showplan is all attributes)
+    showplan.ts         Showplan XML → statements and operator trees
   ui/
     App.tsx             Composition root: state, input and layout wiring
     view-state.ts       Focus, sorting, filters, overlays; handleKey reducer
@@ -52,9 +55,10 @@ src/
     layout.ts           Split the terminal between charts and panels
     chrome.ts           Header, footer and panel titles
     overlays.ts         Help and detail views
+    plan-view.ts        Execution plan as an indented operator tree
     columns.ts          Column definitions for the three grids
     table-model.ts      Column layout, sorting, scrolling
-    braille.ts          Braille area charts
+    chart.ts            Block and braille area charts
     sql-highlight.ts    T-SQL highlighting for the detail view
     segments.ts         Styled text runs (Seg) and helpers
     format.ts           Text measurement and number formatting

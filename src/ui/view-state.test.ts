@@ -201,6 +201,34 @@ describe('handleKey: overlays', () => {
 	});
 });
 
+describe('handleKey: execution plans', () => {
+	const activeDetail = press(start, [{tab: true}, {return: true}]).state;
+	const plan = {source: 'estimated' as const, xml: '<ShowPlanXML/>', statements: []};
+
+	it('p switches a query overlay between details and the plan, back at the top', () => {
+		const scrolled = press(activeDetail, ['j', 'j']).state;
+		const toPlan = press(scrolled, ['p']).state;
+		expect(toPlan.overlay).toMatchObject({kind: 'active', showPlan: true});
+		expect(toPlan.overlayOffset).toBe(0);
+		expect(press(toPlan, ['p']).state.overlay).toMatchObject({kind: 'active', showPlan: false});
+		const recent = press(start, [{tab: true}, 'e', {return: true}, 'p']).state;
+		expect(recent.overlay).toMatchObject({kind: 'recent', showPlan: true});
+	});
+
+	it('p does nothing in process details or help', () => {
+		const processDetail = press(start, [{return: true}]).state;
+		expect(press(processDetail, ['p']).state).toBe(processDetail);
+	});
+
+	it('s asks to save the plan once it has loaded', () => {
+		const showing = press(activeDetail, ['p']).state;
+		expect(press(showing, ['s']).effect).toBeUndefined();
+		const loaded = {...showing, overlay: {...showing.overlay!, plan} as ViewState['overlay']};
+		expect(press(loaded, ['s']).effect).toEqual({type: 'savePlan'});
+		expect(press(activeDetail, ['s']).effect).toBeUndefined();
+	});
+});
+
 describe('handleKey: effects', () => {
 	it.each([
 		['q', {type: 'quit'}],

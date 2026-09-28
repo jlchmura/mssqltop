@@ -30,6 +30,7 @@ mssqltop -S my-sql-server
 - 🔥 **Recent Expensive Queries**: the costliest statements by CPU, reads, writes, and duration over a rolling window.
 - ⚡ **Active Expensive Queries**: what's running right now, with CPU rate and memory grants.
 - 🔎 **Drill-down**: press `Enter` on any row to see every column plus the full SQL text.
+- 🌳 **Execution plans**: press `p` in a query's details for its plan as an operator tree, with each operator's share of the cost, predicates, warnings, and missing indexes. Running queries show actual rows so far when the server supports it. Press `s` to save the plan as a `.sqlplan` file for SSMS.
 - 🔐 **Kerberos / Windows auth**: trusted connections work out of the box, and SQL logins are supported too.
 - 🪶 **Low impact**: monitoring runs at `READ UNCOMMITTED`, with low deadlock priority and a lock timeout, so it never blocks your workload.
 
@@ -101,6 +102,7 @@ Display:
 | `Tab`                                           | Switch between the Processes and Expensive Queries panels            |
 | `↑` `↓` `PgUp` `PgDn` `Home` `End` (or `j` `k`) | Move the selection                                                   |
 | `Enter`                                         | Details and full SQL text for the selected row                       |
+| `p` / `s` (in query details)                    | Show the execution plan / save it as a `.sqlplan` file               |
 | `e` or `←` `→`                                  | Toggle Recent / Active Expensive Queries                             |
 | `/`                                             | Filter the focused panel by text (`Enter` keeps it, `Esc` clears it) |
 | `<` `>`                                         | Change the sort column                                               |

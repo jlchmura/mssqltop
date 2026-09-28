@@ -2,7 +2,8 @@
  * Everything the user controls (focus, sorting, filters, selection, overlays) and the key bindings
  * that change it. handleKey is a pure reducer so bindings can be tested without rendering.
  */
-import type {ActiveQueryRow, ProcessRow, RecentQueryRow, SessionDetail} from '../monitor/types.js';
+import type {ActiveQueryRow, PlanSource, ProcessRow, RecentQueryRow, SessionDetail} from '../monitor/types.js';
+import type {PlanStatement} from '../plan/showplan.js';
 import type {Column} from './table-model.js';
 
 export type TableId = 'processes' | 'recent' | 'active';
@@ -28,11 +29,29 @@ export interface ProcessFilters {
 	grouped: boolean;
 }
 
+export interface LoadedPlan {
+	source: PlanSource;
+	xml: string;
+	statements: PlanStatement[];
+}
+
+/** The execution plan a query's detail overlay can switch to with `p`. */
+export interface PlanView {
+	showPlan?: boolean;
+	/** Undefined until loaded; null when the server has no plan for the query. */
+	plan?: LoadedPlan | null;
+	planError?: string;
+	/** Result of saving the plan with `s`. */
+	planSaved?: {path: string} | {error: string};
+}
+
 export type Overlay =
 	| {kind: 'help'}
 	| {kind: 'process'; row: ProcessRow; detail?: SessionDetail; error?: string}
-	| {kind: 'active'; row: ActiveQueryRow; detail?: SessionDetail; error?: string}
-	| {kind: 'recent'; row: RecentQueryRow};
+	| ({kind: 'active'; row: ActiveQueryRow; detail?: SessionDetail; error?: string} & PlanView)
+	| ({kind: 'recent'; row: RecentQueryRow} & PlanView);
+
+export type QueryOverlay = Extract<Overlay, {kind: 'active' | 'recent'}>;
 
 export interface ViewState {
 	focus: Panel;
@@ -122,7 +141,11 @@ export interface KeyContext {
 
 /** Side effects on the monitor or app that a key asks for. */
 export type Effect =
-	{type: 'quit'} | {type: 'refresh'} | {type: 'setPaused'; paused: boolean} | {type: 'setInterval'; ms: number};
+	| {type: 'quit'}
+	| {type: 'refresh'}
+	| {type: 'setPaused'; paused: boolean}
+	| {type: 'setInterval'; ms: number}
+	| {type: 'savePlan'};
 
 export interface KeyResult {
 	state: ViewState;
@@ -131,7 +154,7 @@ export interface KeyResult {
 
 export function handleKey(s: ViewState, input: string, key: KeyPress, ctx: KeyContext): KeyResult {
 	if (s.editingFilter) return {state: filterKey(s, input, key)};
-	if (s.overlay) return {state: overlayKey(s, input, key, ctx)};
+	if (s.overlay) return overlayKey(s, s.overlay, input, key, ctx);
 	return tableKey(s, input, key, ctx);
 }
 
@@ -149,16 +172,23 @@ function filterKey(s: ViewState, input: string, key: KeyPress): ViewState {
 	return s;
 }
 
-function overlayKey(s: ViewState, input: string, key: KeyPress, ctx: KeyContext): ViewState {
-	const scrollTo = (offset: number) => ({...s, overlayOffset: Math.max(0, Math.min(ctx.overlayMaxOffset, offset))});
-	if (key.escape || key.return || input === 'q' || input === '?') return {...s, overlay: null, overlayOffset: 0};
+function overlayKey(s: ViewState, overlay: Overlay, input: string, key: KeyPress, ctx: KeyContext): KeyResult {
+	const scrollTo = (offset: number) => ({
+		state: {...s, overlayOffset: Math.max(0, Math.min(ctx.overlayMaxOffset, offset))},
+	});
+	if (key.escape || key.return || input === 'q' || input === '?')
+		return {state: {...s, overlay: null, overlayOffset: 0}};
 	if (key.upArrow || input === 'k') return scrollTo(s.overlayOffset - 1);
 	if (key.downArrow || input === 'j') return scrollTo(s.overlayOffset + 1);
 	if (key.pageUp) return scrollTo(s.overlayOffset - ctx.overlayPageRows);
 	if (key.pageDown || input === ' ') return scrollTo(s.overlayOffset + ctx.overlayPageRows);
 	if (key.home) return scrollTo(0);
 	if (key.end) return scrollTo(ctx.overlayMaxOffset);
-	return s;
+	if (overlay.kind === 'active' || overlay.kind === 'recent') {
+		if (input === 'p') return {state: {...s, overlay: {...overlay, showPlan: !overlay.showPlan}, overlayOffset: 0}};
+		if (input === 's' && overlay.showPlan && overlay.plan) return {state: s, effect: {type: 'savePlan'}};
+	}
+	return {state: s};
 }
 
 function tableKey(s: ViewState, input: string, key: KeyPress, ctx: KeyContext): KeyResult {

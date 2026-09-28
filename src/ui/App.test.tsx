@@ -1,6 +1,10 @@
+import {mkdtempSync, readFileSync, rmSync} from 'node:fs';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
 import {afterEach, describe, expect, it, vi} from 'vitest';
-import type {MonitorState} from '../monitor/types.js';
+import type {FetchedPlan, MonitorState} from '../monitor/types.js';
 import {activeRow, monitorState, processRow, recentRow} from '../test/fixtures.js';
+import {LOOKUP_PLAN} from '../test/showplans.js';
 import {KEYS, renderInk, tick, type Rendered} from '../test/render.js';
 import {App, type MonitorHandle} from './App.js';
 
@@ -19,6 +23,7 @@ function fakeMonitor(initial: MonitorState) {
 			inputBuffer: null,
 			lastBatch: null,
 		})),
+		fetchPlan: vi.fn(async (): Promise<FetchedPlan | null> => ({source: 'live', xml: LOOKUP_PLAN})),
 		setPaused: vi.fn(),
 		setInterval: vi.fn(),
 		refreshNow: vi.fn(),
@@ -66,9 +71,9 @@ const expectedRows = (rows: number) => (process.platform === 'win32' ? rows - 1 
 let app: Rendered | undefined;
 afterEach(() => app?.unmount());
 
-function start(state = loaded, size = {columns: 140, rows: 40}) {
+function start(state = loaded, size = {columns: 140, rows: 40}, planDir?: string) {
 	const monitor = fakeMonitor(state);
-	app = renderInk(<App monitor={monitor} target="db1.corp" />, size);
+	app = renderInk(<App monitor={monitor} target="db1.corp" planDir={planDir} />, size);
 	return {monitor, app};
 }
 
@@ -146,6 +151,48 @@ describe('App', () => {
 		monitor.fetchSessionDetail.mockRejectedValueOnce(new Error('permission denied'));
 		await app.press(KEYS.enter);
 		await vi.waitFor(() => expect(app.frame()).toContain('Could not load SQL text: permission denied'));
+	});
+
+	it('shows an active query’s plan with p and saves it with s', async () => {
+		const dir = mkdtempSync(join(tmpdir(), 'mssqltop-'));
+		try {
+			const {app, monitor} = start(loaded, {columns: 140, rows: 40}, dir);
+			await app.press(KEYS.tab, KEYS.enter, 'p');
+			expect(monitor.fetchPlan).toHaveBeenCalledWith({kind: 'active', sessionId: 51, requestId: 0});
+			await vi.waitFor(() => expect(app.frame()).toContain('└─ Key Lookup (Clustered Index Seek)  Orders.PK_Orders'));
+			expect(app.frame()).toContain('Plan (live · actual rows so far)');
+
+			await app.press('s');
+			await vi.waitFor(() => expect(app.frame()).toContain(`Saved to ${dir}`));
+			const [, path] = /Saved to (\S+\.sqlplan)/.exec(app.frame())!;
+			expect(readFileSync(path!, 'utf8')).toBe(LOOKUP_PLAN);
+
+			await app.press('p');
+			expect(app.frame()).toContain('UPDATE dbo.Orders SET x = 1');
+			await app.press('p');
+			expect(app.frame()).toContain('Key Lookup');
+			expect(monitor.fetchPlan).toHaveBeenCalledTimes(1);
+		} finally {
+			rmSync(dir, {recursive: true, force: true});
+		}
+	});
+
+	it('reports plans that cannot be loaded, read or saved', async () => {
+		const {app, monitor} = start(loaded, {columns: 140, rows: 40}, '/nonexistent/dir');
+		monitor.fetchPlan.mockRejectedValueOnce(new Error('VIEW SERVER STATE permission denied'));
+		await app.press(KEYS.tab, 'e', KEYS.enter, 'p');
+		expect(monitor.fetchPlan).toHaveBeenCalledWith({kind: 'recent', key: '0x1234567890ABCDEF'});
+		await vi.waitFor(() =>
+			expect(app.frame()).toContain('Could not load the plan: VIEW SERVER STATE permission denied'),
+		);
+
+		await app.press(KEYS.escape, KEYS.enter);
+		monitor.fetchPlan.mockResolvedValueOnce({source: 'estimated', xml: '<ShowPlanXML><Unclosed>'});
+		await app.press('p');
+		await vi.waitFor(() => expect(app.frame()).toContain('Could not load the plan: the plan XML could not be read'));
+
+		await app.press(KEYS.escape, KEYS.enter, 'p', 's');
+		await vi.waitFor(() => expect(app.frame()).toContain('Could not save the plan: ENOENT'));
 	});
 
 	it('opens help with ?', async () => {

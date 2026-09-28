@@ -8,8 +8,10 @@ SQLCMD=(/opt/mssql-tools18/bin/sqlcmd -C -S localhost -U sa -P "$MSSQL_SA_PASSWO
 server_pid=$!
 
 echo "Waiting for SQL Server to start..."
+# Logins work before databases finish recovery, so on a restart also wait for the demo databases to come online.
 for _ in $(seq 1 120); do
-	if "${SQLCMD[@]}" -Q "SELECT 1" -o /dev/null 2>/dev/null; then break; fi
+	recovering=$("${SQLCMD[@]}" -h -1 -Q "SET NOCOUNT ON; SELECT COUNT(*) FROM sys.databases WHERE state_desc <> 'ONLINE'" 2>/dev/null || echo failed)
+	if [[ "$recovering" =~ ^[[:space:]]*0[[:space:]]*$ ]]; then break; fi
 	sleep 2
 done
 

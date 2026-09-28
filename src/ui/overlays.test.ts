@@ -1,5 +1,7 @@
 import {describe, expect, it} from 'vitest';
+import {parseShowplan} from '../plan/showplan.js';
 import {activeRow, processRow, recentRow} from '../test/fixtures.js';
+import {BATCH_PLAN, LOOKUP_PLAN} from '../test/showplans.js';
 import {HELP, buildOverlay, renderBlocks, sessionSqlBlocks} from './overlays.js';
 import type {Seg} from './segments.js';
 
@@ -53,6 +55,77 @@ describe('buildOverlay', () => {
 		expect(text(buildOverlay({kind: 'recent', row: recentRow({key: '0x0200abc:120'})}, 100).lines)).toContain(
 			'(none — grouped by statement)',
 		);
+	});
+});
+
+describe('buildOverlay: execution plans', () => {
+	const loaded = (xml: string, source: 'live' | 'estimated') => ({source, xml, statements: parseShowplan(xml)});
+
+	it('offers the plan from query details', () => {
+		expect(text([buildOverlay({kind: 'active', row: activeRow()}, 100).title])).toContain('p plan');
+		expect(text([buildOverlay({kind: 'recent', row: recentRow()}, 100).title])).toContain('p plan');
+	});
+
+	it('shows loading, missing and failed plans', () => {
+		const row = activeRow();
+		const loading = buildOverlay({kind: 'active', row, showPlan: true}, 100);
+		expect(text([loading.title])).toBe('Active request · session 55 · execution plan  p details · Esc close');
+		expect(text(loading.lines)).toBe('Loading plan…');
+		expect(text(buildOverlay({kind: 'active', row, showPlan: true, plan: null}, 100).lines)).toContain(
+			'No cached plan for this query',
+		);
+		expect(text(buildOverlay({kind: 'recent', row: recentRow(), showPlan: true, planError: 'boom'}, 100).lines)).toBe(
+			'Could not load the plan: boom',
+		);
+	});
+
+	it('draws a loaded plan, with the save hint and result', () => {
+		const overlay = buildOverlay(
+			{
+				kind: 'active',
+				row: activeRow(),
+				showPlan: true,
+				plan: loaded(LOOKUP_PLAN, 'live'),
+				planSaved: {path: '/tmp/p.sqlplan'},
+			},
+			100,
+		);
+		expect(text([overlay.title])).toContain('s save .sqlplan');
+		const body = text(overlay.lines);
+		expect(body).toMatch(/^Saved to \/tmp\/p.sqlplan\n/);
+		expect(body).toContain('Key Lookup (Clustered Index Seek)');
+		expect(body).not.toContain('lightweight query profiling');
+		expect(
+			text(
+				buildOverlay(
+					{
+						kind: 'recent',
+						row: recentRow(),
+						showPlan: true,
+						plan: loaded(LOOKUP_PLAN, 'estimated'),
+						planSaved: {error: 'EACCES'},
+					},
+					100,
+				).lines,
+			),
+		).toMatch(/^Could not save the plan: EACCES/);
+	});
+
+	it('explains how to get actual rows when an active query only has its cached plan', () => {
+		const body = text(
+			buildOverlay({kind: 'active', row: activeRow(), showPlan: true, plan: loaded(LOOKUP_PLAN, 'estimated')}, 100)
+				.lines,
+		);
+		expect(body).toContain('lightweight query profiling');
+	});
+
+	it('shows only the statement the query hash belongs to', () => {
+		const plan = loaded(BATCH_PLAN, 'estimated');
+		const body = text(
+			buildOverlay({kind: 'recent', row: recentRow({key: '0xAAAAAAAAAAAAAAAA'}), showPlan: true, plan}, 100).lines,
+		);
+		expect(body).toContain('Table Scan  A');
+		expect(body).not.toContain('Table Scan [batch]  B');
 	});
 });
 

@@ -1,7 +1,10 @@
+import {writeFileSync} from 'node:fs';
+import {join} from 'node:path';
 import {useEffect, useRef, useState, useSyncExternalStore} from 'react';
 import {Box, useApp, useInput, useWindowSize} from 'ink';
 import {errorMessage} from '../db/values.js';
-import type {MonitorState, SessionDetail} from '../monitor/types.js';
+import type {FetchedPlan, MonitorState, PlanTarget, SessionDetail} from '../monitor/types.js';
+import {parseShowplan} from '../plan/showplan.js';
 import {DEFAULT_GRAPH_STYLE, type GraphStyle} from './chart.js';
 import {buildFooter, buildHeader, buildProcessesTitle, buildQueriesTitle} from './chrome.js';
 import {Chart} from './components/Chart.js';
@@ -13,6 +16,7 @@ import {deriveTables} from './derive.js';
 import {fmtCompact, fmtInt, fmtRate} from './format.js';
 import {computeLayout, visibleRows} from './layout.js';
 import {buildOverlay} from './overlays.js';
+import {planFileName} from './plan-view.js';
 import {scrollOffset} from './table-model.js';
 import {
 	focusedTable,
@@ -21,6 +25,7 @@ import {
 	selectedIndex,
 	type Effect,
 	type Overlay,
+	type QueryOverlay,
 	type TableId,
 } from './view-state.js';
 
@@ -29,6 +34,7 @@ export interface MonitorHandle {
 	subscribe(listener: () => void): () => void;
 	getState(): MonitorState;
 	fetchSessionDetail(sessionId: number): Promise<SessionDetail>;
+	fetchPlan(target: PlanTarget): Promise<FetchedPlan | null>;
 	setPaused(paused: boolean): void;
 	setInterval(intervalMs: number): void;
 	refreshNow(): void;
@@ -40,9 +46,11 @@ interface Props {
 	target: string;
 	/** How the overview charts are drawn. */
 	graphStyle?: GraphStyle;
+	/** Where `s` saves execution plans (default: the current directory). */
+	planDir?: string;
 }
 
-export function App({monitor, target, graphStyle = DEFAULT_GRAPH_STYLE}: Props) {
+export function App({monitor, target, graphStyle = DEFAULT_GRAPH_STYLE, planDir = process.cwd()}: Props) {
 	const state = useSyncExternalStore(monitor.subscribe, monitor.getState);
 	const {columns: width, rows} = useWindowSize();
 	// Ink clears the whole Windows console on every frame that fills the screen, which flickers;
@@ -63,9 +71,10 @@ export function App({monitor, target, graphStyle = DEFAULT_GRAPH_STYLE}: Props) 
 	const overlay = view.overlay ? buildOverlay(view.overlay, width - 4) : null;
 	const overlayMaxOffset = overlay ? Math.max(0, overlay.lines.length - (layout.overlayHeight - 2)) : 0;
 
-	useSessionDetail(view.overlay, monitor, detail =>
-		setView(v => (v.overlay === detail.overlay ? {...v, overlay: detail.next} : v)),
-	);
+	const replaceOverlay = ({overlay, next}: {overlay: Overlay; next: Overlay}) =>
+		setView(v => (v.overlay === overlay ? {...v, overlay: next} : v));
+	useSessionDetail(view.overlay, monitor, replaceOverlay);
+	useQueryPlan(view.overlay, monitor, replaceOverlay);
 
 	useInput((input, key) => {
 		const {state: next, effect} = handleKey(view, input, key, {
@@ -94,7 +103,23 @@ export function App({monitor, target, graphStyle = DEFAULT_GRAPH_STYLE}: Props) 
 				return monitor.setPaused(effect.paused);
 			case 'setInterval':
 				return monitor.setInterval(effect.ms);
+			case 'savePlan':
+				return savePlan();
 		}
+	};
+
+	const savePlan = () => {
+		const overlay = view.overlay;
+		if (!overlay || (overlay.kind !== 'active' && overlay.kind !== 'recent') || !overlay.plan) return;
+		const path = join(planDir, planFileName(overlay, new Date()));
+		let planSaved: QueryOverlay['planSaved'];
+		try {
+			writeFileSync(path, overlay.plan.xml, 'utf8');
+			planSaved = {path};
+		} catch (err) {
+			planSaved = {error: errorMessage(err)};
+		}
+		replaceOverlay({overlay, next: {...overlay, planSaved}});
 	};
 
 	const header = <Line segs={buildHeader(state, target, width, Date.now())} />;
@@ -239,14 +264,10 @@ function emptyQueriesMessage(tab: 'recent' | 'active', state: MonitorState): str
 	return `Collecting a baseline from the plan cache…${state.recentError ? ` (${state.recentError})` : ''}`;
 }
 
-type DetailOverlay = Extract<Overlay, {kind: 'process' | 'active'}>;
+type OverlayUpdate = (update: {overlay: Overlay; next: Overlay}) => void;
 
 /** Loads a session's SQL text when a process/active detail overlay opens without it. */
-function useSessionDetail(
-	overlay: Overlay | null,
-	monitor: MonitorHandle,
-	apply: (update: {overlay: DetailOverlay; next: DetailOverlay}) => void,
-) {
+function useSessionDetail(overlay: Overlay | null, monitor: MonitorHandle, apply: OverlayUpdate) {
 	useEffect(() => {
 		if (!overlay || (overlay.kind !== 'process' && overlay.kind !== 'active')) return;
 		if (overlay.detail || overlay.error) return;
@@ -254,6 +275,35 @@ function useSessionDetail(
 		monitor.fetchSessionDetail(overlay.row.sessionId).then(
 			detail => live && apply({overlay, next: {...overlay, detail}}),
 			(err: unknown) => live && apply({overlay, next: {...overlay, error: errorMessage(err)}}),
+		);
+		return () => {
+			live = false;
+		};
+		// `apply` is a fresh closure every render; re-running on it would refetch constantly.
+	}, [overlay, monitor]);
+}
+
+/** Loads and parses the execution plan the first time a query overlay switches to it. */
+function useQueryPlan(overlay: Overlay | null, monitor: MonitorHandle, apply: OverlayUpdate) {
+	useEffect(() => {
+		if (!overlay || (overlay.kind !== 'active' && overlay.kind !== 'recent') || !overlay.showPlan) return;
+		if (overlay.plan !== undefined || overlay.planError) return;
+		const target: PlanTarget =
+			overlay.kind === 'active'
+				? {kind: 'active', sessionId: overlay.row.sessionId, requestId: overlay.row.requestId}
+				: {kind: 'recent', key: overlay.row.key};
+		let live = true;
+		monitor.fetchPlan(target).then(
+			fetched => {
+				if (!live) return;
+				try {
+					const plan = fetched && {...fetched, statements: parseShowplan(fetched.xml)};
+					apply({overlay, next: {...overlay, plan}});
+				} catch (err) {
+					apply({overlay, next: {...overlay, planError: `the plan XML could not be read (${errorMessage(err)})`}});
+				}
+			},
+			(err: unknown) => live && apply({overlay, next: {...overlay, planError: errorMessage(err)}}),
 		);
 		return () => {
 			live = false;

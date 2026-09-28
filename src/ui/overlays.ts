@@ -1,9 +1,11 @@
 /** Content of the full-screen overlays: help and the per-row detail views. */
 import type {ActiveQueryRow, ProcessRow, RecentQueryRow, SessionDetail} from '../monitor/types.js';
+import {statementsFor} from '../plan/showplan.js';
 import {fit, fmtInt, fmtRate, oneLine, wrap} from './format.js';
+import {renderPlan} from './plan-view.js';
 import type {Seg} from './segments.js';
 import {highlightSql} from './sql-highlight.js';
-import type {Overlay} from './view-state.js';
+import type {Overlay, QueryOverlay} from './view-state.js';
 
 export interface OverlayContent {
 	title: Seg[];
@@ -20,6 +22,7 @@ export const HELP: ReadonlyArray<readonly [keys: string, description: string]> =
 	['Tab', 'Switch between the Processes and Expensive Queries panels'],
 	['↑ ↓ PgUp PgDn Home End', 'Move the selection (also j / k)'],
 	['Enter', 'Details for the selected row: all columns plus the full SQL text'],
+	['p  s', 'In query details: show the execution plan, and save it as a .sqlplan file'],
 	['e  ← →', 'Toggle Recent / Active Expensive Queries'],
 	['/', 'Filter the focused panel by text (Enter to keep, Esc to clear)'],
 	['< >', 'Change the sort column of the focused panel'],
@@ -37,6 +40,7 @@ export const HELP: ReadonlyArray<readonly [keys: string, description: string]> =
 ];
 
 const closeHint: Seg = {text: '  Esc to close', color: 'gray'};
+const hint = (text: string): Seg => ({text: `  ${text}`, color: 'gray'});
 
 /** Builds an overlay's title and lines for a content area `width` columns wide. */
 export function buildOverlay(o: Overlay, width: number): OverlayContent {
@@ -53,8 +57,12 @@ export function buildOverlay(o: Overlay, width: number): OverlayContent {
 				lines: renderBlocks([processFields(o.row), ...sessionSqlBlocks(o.detail, o.error)], width),
 			};
 		case 'active':
+			if (o.showPlan) return planOverlay(o, `Active request · session ${o.row.sessionId}`, width);
 			return {
-				title: [{text: `Active request · session ${o.row.sessionId}`, bold: true, color: 'cyan'}, closeHint],
+				title: [
+					{text: `Active request · session ${o.row.sessionId}`, bold: true, color: 'cyan'},
+					hint('p plan · Esc close'),
+				],
 				lines: renderBlocks(
 					[
 						activeFields(o.row),
@@ -65,11 +73,57 @@ export function buildOverlay(o: Overlay, width: number): OverlayContent {
 				),
 			};
 		case 'recent':
+			if (o.showPlan) return planOverlay(o, 'Recent expensive query', width);
 			return {
-				title: [{text: 'Recent expensive query', bold: true, color: 'cyan'}, closeHint],
+				title: [{text: 'Recent expensive query', bold: true, color: 'cyan'}, hint('p plan · Esc close')],
 				lines: renderBlocks([recentFields(o.row), {kind: 'sql', title: 'Statement', text: o.row.text}], width),
 			};
 	}
+}
+
+function planOverlay(o: QueryOverlay, label: string, width: number): OverlayContent {
+	const title: Seg[] = [
+		{text: `${label} · execution plan`, bold: true, color: 'cyan'},
+		hint(o.plan ? 'p details · s save .sqlplan · Esc close' : 'p details · Esc close'),
+	];
+	const message = (text: string, color = 'gray'): OverlayContent => ({
+		title,
+		lines: wrap(text, width).map(line => [{text: line, color}]),
+	});
+	if (o.planError) return message(`Could not load the plan: ${o.planError}`, 'red');
+	if (o.plan === undefined) return message('Loading plan…');
+	if (o.plan === null) {
+		return message(
+			'No cached plan for this query. It may have been evicted from the plan cache, or the statement is never ' +
+				'cached (for example OPTION (RECOMPILE) or a trivial ad hoc query with "optimize for ad hoc workloads" on).',
+		);
+	}
+
+	const lines: Seg[][] = [];
+	if (o.planSaved) {
+		lines.push(
+			'path' in o.planSaved
+				? [
+						{text: 'Saved to ', color: 'green'},
+						{text: o.planSaved.path, bold: true},
+					]
+				: [{text: `Could not save the plan: ${o.planSaved.error}`, color: 'red'}],
+			[],
+		);
+	}
+	const queryHash = o.kind === 'active' ? o.row.queryHash : o.row.key;
+	lines.push(...renderPlan(statementsFor(o.plan.statements, queryHash), o.plan.source, width));
+	if (o.kind === 'active' && o.plan.source === 'estimated') {
+		lines.push(
+			[],
+			...wrap(
+				'Actual row counts for running queries need lightweight query profiling: on by default from SQL Server ' +
+					'2019, or trace flag 7412 on 2016 SP1 and 2017.',
+				width,
+			).map((line): Seg[] => [{text: line, color: 'gray'}]),
+		);
+	}
+	return {title, lines};
 }
 
 function helpOverlay(width: number): OverlayContent {

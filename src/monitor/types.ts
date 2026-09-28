@@ -112,6 +112,18 @@ export interface SessionDetail {
 	inputBuffer: string | null;
 }
 
+/** `live`: in-flight plan with actual rows so far; `estimated`: the cached plan. */
+export type PlanSource = 'live' | 'estimated';
+
+export interface FetchedPlan {
+	source: PlanSource;
+	/** Showplan XML, as SSMS saves it in a .sqlplan file. */
+	xml: string;
+}
+
+/** Whose plan to fetch: a running request, or a Recent Expensive Queries row by its key. */
+export type PlanTarget = {kind: 'active'; sessionId: number; requestId: number} | {kind: 'recent'; key: string};
+
 export interface MonitorState {
 	server: ServerInfo | null;
 	series: Series;
