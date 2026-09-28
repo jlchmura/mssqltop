@@ -10,7 +10,7 @@
 [![license](https://img.shields.io/npm/l/mssqltop.svg)](LICENSE)
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-FFDD00?logo=buymeacoffee&logoColor=black)](https://www.buymeacoffee.com/jlchmura)
 
-<img src="docs/screenshot.png" alt="mssqltop monitoring a SQL Server instance" width="900">
+<img src="docs/mssqltop-screenshot.png" alt="mssqltop monitoring a SQL Server instance" width="900">
 
 </div>
 
