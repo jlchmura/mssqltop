@@ -25,7 +25,7 @@ mssqltop -S my-sql-server
 
 ## Features
 
-- 📈 **Live overview charts**: % Processor Time, Waiting Tasks, Database I/O, and Batch Requests/sec, drawn with braille characters.
+- 📈 **Live overview charts**: % Processor Time, Waiting Tasks, Database I/O, and Batch Requests/sec, drawn with block characters, or braille for twice the detail with `--graph braille`.
 - 🧵 **Processes**: every session with task state, command, waits, blocking chains, and memory. It starts filtered to active user work.
 - 🔥 **Recent Expensive Queries**: the costliest statements by CPU, reads, writes, and duration over a rolling window.
 - ⚡ **Active Expensive Queries**: what's running right now, with CPU rate and memory grants.
@@ -84,6 +84,10 @@ Refresh:
       --recent-interval <s>    Recent expensive queries poll interval (default: 10)
       --recent-window <s>      Window the recent expensive query rates cover (default: 60)
 
+Display:
+      --graph <block|braille>  Chart characters (default: block). braille has twice the vertical
+                               detail if your terminal draws it well; see "Braille charts" below.
+
   -h, --help                   Show help
   -v, --version                Show the version
 ```
@@ -123,7 +127,7 @@ Refresh:
 
 - **SQL Server version:** tested against SQL Server 2016. It should work on 2012 and later, since it only uses DMVs available there.
 - **Client OS:** developed and tested on macOS. Linux and Windows use the same ODBC driver and should work; reports are welcome. Prebuilt binaries for the `odbc` dependency cover macOS (arm64/x64), Linux x64, and Windows x64; other platforms (e.g. Linux or Windows on ARM64) compile it on install, which needs a C++ toolchain and, on Linux, the unixODBC headers (`unixodbc-dev`).
-- **Terminal:** any modern terminal with Unicode and 256 colors. The charts need a font that includes braille characters, which the default fonts on macOS, Windows Terminal, and most Linux distros do.
+- **Terminal:** any modern terminal with Unicode and 256 colors (true color looks best). The optional braille charts also need a terminal that draws braille well; see [Braille charts](#troubleshooting).
 
 ## How it works
 
@@ -142,6 +146,30 @@ Each panel is computed from SQL Server's dynamic management views. Cumulative co
 mssqltop opens two connections: one for the fast refresh, and one for the heavier plan-cache scan so it never stalls the charts. Its own sessions and statements are hidden from the lists.
 
 ## Troubleshooting
+
+<details>
+<summary><b>Braille charts (<code>--graph braille</code>): rings around the dots, bars two dots wide, blinking, or gaps</b></summary>
+
+By default the charts use block characters (2×2 per character), which look the same in virtually every terminal. `--graph braille` draws them like btop instead: each character is a 2×4 grid of dots, and each sample is one dot column, so you get twice the vertical detail and spikes a single dot wide. How good that looks depends entirely on how your terminal draws braille:
+
+- **Rings around the dots:** some fonts draw the _unused_ dot positions as faint rings. Every bar then looks two dots wide, and the charts seem to blink as they scroll. For example, none of Hyper's default fonts contain braille, so on macOS it falls back to the Apple Braille font, which draws rings.
+- **Gaps between rows:** if the braille font's characters are shorter than your main font's line height, every fourth dot has a larger gap above it.
+
+Terminals that draw braille themselves, like VS Code's, have neither problem. To check yours, run this. If `⡇` shows a full 2×4 grid instead of one column of dots, your terminal draws rings:
+
+```bash
+printf '⡇⡇⡇  ⢸⢸⢸  ⣿⣿⣿\n'
+```
+
+To fix the rings, configure your terminal to draw braille with a font that shows only the lit dots, keeping your main font for everything else. On macOS, **Apple Symbols** is such a font (avoid the "Apple Braille Outline" and "Pinpoint" faces, which draw the rings). In Hyper, add it to `fontFamily` in `~/.hyper.js` right after your main font:
+
+```js
+fontFamily: '"Fira Code", "Apple Symbols", Menlo, monospace',
+```
+
+Other terminals can assign a separate font to a character range too: iTerm2's "Use a different font for non-ASCII text", Kitty's `symbol_map U+2800-U+28FF`, and Ghostty's `font-codepoint-map`. If braille still doesn't look right, stick with the default block charts.
+
+</details>
 
 <details>
 <summary><b>Login failed / "Cannot generate SSPI context" on macOS or Linux</b></summary>

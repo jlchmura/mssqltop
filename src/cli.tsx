@@ -45,7 +45,7 @@ function main(): void {
 		},
 	);
 
-	const app = render(<App monitor={monitor} target={options.target} />, {
+	const app = render(<App monitor={monitor} target={options.target} graphStyle={options.graph} />, {
 		alternateScreen: true,
 		incrementalRendering: true,
 		maxFps: 20,

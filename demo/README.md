@@ -14,7 +14,7 @@ npm run demo:top     # in another terminal: watch it with mssqltop
 npm run demo:down    # stop the server (add -v to the compose command to delete its data)
 ```
 
-The server listens on `localhost,14330`, bound to localhost only. `demo:top` connects as the `mssqltop` login, which has only `VIEW SERVER STATE`.
+The server listens on `127.0.0.1,14330` (IPv4 localhost only; use that rather than `localhost`, which may resolve to IPv6 and time out). `demo:top` connects as the `mssqltop` login, which has only `VIEW SERVER STATE`.
 
 ## What the load looks like
 

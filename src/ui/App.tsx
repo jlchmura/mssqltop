@@ -2,6 +2,7 @@ import {useEffect, useRef, useState, useSyncExternalStore} from 'react';
 import {Box, useApp, useInput, useWindowSize} from 'ink';
 import {errorMessage} from '../db/values.js';
 import type {MonitorState, SessionDetail} from '../monitor/types.js';
+import {DEFAULT_GRAPH_STYLE, type GraphStyle} from './chart.js';
 import {buildFooter, buildHeader, buildProcessesTitle, buildQueriesTitle} from './chrome.js';
 import {Chart} from './components/Chart.js';
 import {Detail} from './components/Detail.js';
@@ -37,9 +38,11 @@ interface Props {
 	monitor: MonitorHandle;
 	/** Server being monitored, shown while connecting. */
 	target: string;
+	/** How the overview charts are drawn. */
+	graphStyle?: GraphStyle;
 }
 
-export function App({monitor, target}: Props) {
+export function App({monitor, target, graphStyle = DEFAULT_GRAPH_STYLE}: Props) {
 	const state = useSyncExternalStore(monitor.subscribe, monitor.getState);
 	const {columns: width, rows} = useWindowSize();
 	// Ink clears the whole Windows console on every frame that fills the screen, which flickers;
@@ -149,6 +152,7 @@ export function App({monitor, target}: Props) {
 			{layout.chartsVisible ? (
 				<Box flexDirection="row" height={layout.chartHeight}>
 					<Chart
+						style={graphStyle}
 						title="% Processor Time"
 						shortTitle="CPU"
 						current={latest(series.cpu, v => `${Math.round(v)}%`)}
@@ -158,6 +162,7 @@ export function App({monitor, target}: Props) {
 						height={layout.chartHeight}
 					/>
 					<Chart
+						style={graphStyle}
 						title="Waiting Tasks"
 						shortTitle="Waiting"
 						current={latest(series.waiting, fmtInt)}
@@ -166,6 +171,7 @@ export function App({monitor, target}: Props) {
 						height={layout.chartHeight}
 					/>
 					<Chart
+						style={graphStyle}
 						title="Database I/O"
 						shortTitle="DB I/O"
 						current={latest(series.io, v => `${fmtRate(v)} MB/s`)}
@@ -175,6 +181,7 @@ export function App({monitor, target}: Props) {
 						height={layout.chartHeight}
 					/>
 					<Chart
+						style={graphStyle}
 						title="Batch Requests/sec"
 						shortTitle="Batches/s"
 						current={latest(series.batch, fmtCompact)}

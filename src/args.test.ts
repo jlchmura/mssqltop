@@ -23,6 +23,7 @@ describe('parseCli', () => {
 			intervalMs: 2000,
 			recentIntervalMs: 10_000,
 			recentWindowSec: 60,
+			graph: 'block',
 		});
 	});
 
@@ -73,6 +74,10 @@ describe('parseCli', () => {
 		expect(options.target).toBe('tcp:db9');
 	});
 
+	it('accepts --graph braille', () => {
+		expect(run(['-S', 'db', '--graph', 'braille']).graph).toBe('braille');
+	});
+
 	it('recognizes --help and --version', () => {
 		expect(parseCli(['--help'], {})).toEqual({kind: 'help'});
 		expect(parseCli(['-v'], {})).toEqual({kind: 'version'});
@@ -84,6 +89,7 @@ describe('parseCli', () => {
 		[['-S', 'db', '--recent-window', 'abc'], /--recent-window must be a positive number/],
 		[['-S', 'db', '--bogus'], /Unknown option/],
 		[['-S', 'db', 'extra'], /Unexpected argument/],
+		[['-S', 'db', '--graph', 'dots'], /--graph must be one of: block, braille/],
 	])('rejects %j', (argv, message) => {
 		const parsed = parseCli(argv, {});
 		expect(parsed.kind).toBe('error');

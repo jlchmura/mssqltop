@@ -71,14 +71,14 @@ describe('Table', () => {
 });
 
 describe('Chart', () => {
-	it('frames a braille chart with its current value and axis labels', () => {
+	it('frames a chart (block characters by default) with its current value and axis labels', () => {
 		const lines = show(
 			<Chart title="% Processor Time" current="12%" values={[50, 100]} max={100} width={30} height={5} />,
 		);
 		expect(lines[0]).toBe('╭─ % Processor Time (12%) ───╮');
 		expect(lines[1]).toMatch(/100│$/);
 		expect(lines[3]).toMatch(/0│$/);
-		expect(lines.join('')).toMatch(/[⠁-⣿]/);
+		expect(lines.join('')).toMatch(/[▖▗▄▌▐▙▟█]/);
 	});
 
 	it('switches to the short title when narrow', () => {

@@ -175,6 +175,18 @@ describe('App', () => {
 		await expect(exited).resolves.toBeUndefined();
 	});
 
+	it('draws the charts with block characters by default', () => {
+		const frame = start().app.frame();
+		expect(frame).toMatch(/[▖▗▄▌▐▙▟█]/);
+		expect(frame).not.toMatch(/[\u2801-\u28ff]/);
+	});
+
+	it('draws braille charts when asked', () => {
+		const monitor = fakeMonitor(loaded);
+		app = renderInk(<App monitor={monitor} target="db1" graphStyle="braille" />, {columns: 140, rows: 40});
+		expect(app.frame()).toMatch(/[\u2801-\u28ff]/);
+	});
+
 	it('still renders on a small terminal', () => {
 		const frame = start(loaded, {columns: 60, rows: 12}).app.frame();
 		expect(frame.split('\n')).toHaveLength(expectedRows(12));

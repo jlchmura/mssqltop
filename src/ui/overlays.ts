@@ -89,7 +89,7 @@ function helpOverlay(width: number): OverlayContent {
 			]),
 			[],
 			note('Charts: ', 'SQL Server process CPU across all schedulers, user tasks waiting, data+log file'),
-			note('        ', 'I/O throughput, and batch requests per second. Each column of braille = 2 samples.'),
+			note('        ', 'I/O throughput, and batch requests per second. Each character = 2 samples.'),
 			note('Recent Expensive Queries: ', 'plan-cache deltas grouped by query hash over a rolling window.'),
 			note('Active Expensive Queries: ', 'requests executing right now, with their memory grants.'),
 		],

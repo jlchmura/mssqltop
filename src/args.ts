@@ -1,6 +1,7 @@
 /** Command-line parsing, kept free of side effects so it can be tested. */
 import {parseArgs} from 'node:util';
 import {serverFromConnectionString, type ConnectOptions} from './db/connection-string.js';
+import {DEFAULT_GRAPH_STYLE, GRAPH_STYLES, type GraphStyle} from './ui/chart.js';
 
 export const USAGE = `mssqltop — htop-style activity monitor for Microsoft SQL Server
 
@@ -21,6 +22,10 @@ Refresh:
       --recent-interval <s>    Recent expensive queries poll interval (default: 10)
       --recent-window <s>      Window the recent expensive query rates cover (default: 60)
 
+Display:
+      --graph <block|braille>  Chart characters (default: block). braille has twice the vertical
+                               detail if your terminal draws it well; see "Braille charts" in the README.
+
   -h, --help                   Show this help
   -v, --version                Show the version
 
@@ -36,6 +41,7 @@ export interface CliOptions {
 	intervalMs: number;
 	recentIntervalMs: number;
 	recentWindowSec: number;
+	graph: GraphStyle;
 }
 
 export type ParsedArgs =
@@ -57,6 +63,7 @@ export function parseCli(argv: readonly string[], env: Readonly<Record<string, s
 				interval: {type: 'string', short: 'i', default: '2'},
 				'recent-interval': {type: 'string', default: '10'},
 				'recent-window': {type: 'string', default: '60'},
+				graph: {type: 'string', default: DEFAULT_GRAPH_STYLE},
 				help: {type: 'boolean', short: 'h'},
 				version: {type: 'boolean', short: 'v'},
 			},
@@ -83,6 +90,10 @@ export function parseCli(argv: readonly string[], env: Readonly<Record<string, s
 			return {kind: 'error', message: `--${name} must be a positive number of seconds.`};
 	}
 
+	const graph = values.graph as GraphStyle;
+	if (!GRAPH_STYLES.includes(graph))
+		return {kind: 'error', message: `--graph must be one of: ${GRAPH_STYLES.join(', ')}.`};
+
 	return {
 		kind: 'run',
 		options: {
@@ -99,6 +110,7 @@ export function parseCli(argv: readonly string[], env: Readonly<Record<string, s
 			intervalMs: Number(values.interval) * 1000,
 			recentIntervalMs: Number(values['recent-interval']) * 1000,
 			recentWindowSec: Number(values['recent-window']),
+			graph,
 		},
 	};
 }
