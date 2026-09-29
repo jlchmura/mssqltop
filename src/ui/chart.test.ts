@@ -1,5 +1,5 @@
 import {describe, expect, it} from 'vitest';
-import {GREEN, LABEL_WIDTH, chartTitle, gradientAt, renderChart as render, type ChartSpec} from './chart.js';
+import {HEAT, LABEL_WIDTH, LEVEL, chartTitle, gradientAt, renderChart as render, type ChartSpec} from './chart.js';
 
 /** Most of these tests check exact braille glyphs, so they opt in to braille unless the spec says otherwise. */
 const renderChart = (spec: ChartSpec) => render({style: 'braille', ...spec});
@@ -74,10 +74,12 @@ describe('renderChart', () => {
 		expect(text(lines[3]!)).toMatch(/50$/);
 	});
 
-	it('colors each row along the gradient, darkest at the bottom', () => {
+	it('colors each row along the gradient, from its first stop at the bottom', () => {
 		const lines = renderChart({values: [10, 10, 10, 10], width: 8, rows: 3, max: 10});
 		const colors = lines.map(line => line.find(seg => seg.text.includes(FULL))?.color);
-		expect(colors).toEqual([GREEN[2], GREEN[1], GREEN[0]]);
+		expect(colors).toEqual([LEVEL[2], LEVEL[1], LEVEL[0]]);
+		const heat = renderChart({values: [10, 10], width: 8, rows: 4, max: 10, gradient: HEAT});
+		expect(heat[0]!.find(seg => seg.text.includes(FULL))?.color).toBe(HEAT[3]);
 	});
 
 	it('gives a whole row one color, so it never changes as the chart scrolls', () => {
@@ -126,7 +128,7 @@ describe('renderChart with block characters', () => {
 	it('keeps the gridlines, labels and row colors', () => {
 		const lines = renderChart({values: [10, 10], width: 8, rows: 2, max: 10, style: 'block'});
 		expect(text(lines[0]!)).toBe(' █    10');
-		expect(lines[0]!.find(seg => seg.text.includes('█'))?.color).toBe(GREEN[2]);
+		expect(lines[0]!.find(seg => seg.text.includes('█'))?.color).toBe(LEVEL[2]);
 	});
 });
 

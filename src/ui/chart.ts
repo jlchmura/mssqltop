@@ -41,7 +41,14 @@ export const LABEL_WIDTH = 6;
  */
 export type ChartGradient = readonly string[];
 
-export const GREEN: ChartGradient = ['#2f7d3f', '#5fd16f', '#b4f5b0'];
+/**
+ * Pastel green at the bottom (btop's), bright yellow by mid-height, orange at the top. Braille dots are thin,
+ * so the colors need to be saturated to read as colors at all.
+ */
+export const LEVEL: ChartGradient = ['#77ca9b', '#e8d95a', '#f5a524'];
+
+/** LEVEL continuing to red at the top, for fixed scales like 0–100% where the top means "maxed out". */
+export const HEAT: ChartGradient = [...LEVEL, '#e5484d'];
 
 export interface ChartSpec {
 	/** The most recent samples, oldest first. */
@@ -69,7 +76,7 @@ export function renderChart({
 	rows,
 	max,
 	minMax = 10,
-	gradient = GREEN,
+	gradient = LEVEL,
 	style = DEFAULT_GRAPH_STYLE,
 }: ChartSpec): Seg[][] {
 	const plotW = Math.max(1, width - LABEL_WIDTH);

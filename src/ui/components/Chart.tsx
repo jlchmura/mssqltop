@@ -1,5 +1,5 @@
 import {Box} from 'ink';
-import {DEFAULT_GRAPH_STYLE, GREEN, chartTitle, renderChart, type ChartGradient, type GraphStyle} from '../chart.js';
+import {DEFAULT_GRAPH_STYLE, LEVEL, chartTitle, renderChart, type ChartGradient, type GraphStyle} from '../chart.js';
 import {Frame} from './Frame.js';
 import {Line} from './Line.js';
 
@@ -33,7 +33,7 @@ export function Chart({
 	height,
 	max,
 	minMax,
-	gradient = GREEN,
+	gradient = LEVEL,
 	style = DEFAULT_GRAPH_STYLE,
 	color = 'greenBright',
 }: Props) {

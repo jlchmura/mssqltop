@@ -5,7 +5,7 @@ import {Box, useApp, useInput, useWindowSize} from 'ink';
 import {errorMessage} from '../db/values.js';
 import type {FetchedPlan, MonitorState, PlanTarget, SessionDetail} from '../monitor/types.js';
 import {parseShowplan} from '../plan/showplan.js';
-import {DEFAULT_GRAPH_STYLE, type GraphStyle} from './chart.js';
+import {DEFAULT_GRAPH_STYLE, HEAT, type GraphStyle} from './chart.js';
 import {buildFooter, buildHeader, buildProcessesTitle, buildQueriesTitle} from './chrome.js';
 import {Chart} from './components/Chart.js';
 import {Detail} from './components/Detail.js';
@@ -183,6 +183,7 @@ export function App({monitor, target, graphStyle = DEFAULT_GRAPH_STYLE, planDir 
 						current={latest(series.cpu, v => `${Math.round(v)}%`)}
 						values={series.cpu}
 						max={100}
+						gradient={HEAT}
 						width={cpuW}
 						height={layout.chartHeight}
 					/>
